@@ -1,0 +1,21 @@
+todo
+[x] fix discontinuities in tracing lines
+[x] deleting links
+[x] saving to url
+[x] scale/zoom plane
+[x] change speed
+[x] adding rotaries
+[x] fix deleting links
+[x] set segment length
+[x] fix deleting unchanging link
+[x] make scale/zoom display-only
+[x] simplify scale/zoom and normalize dimensions
+[ ] rotate base plane
+[ ] center hotkey
+[ ] set point positions
+[ ] set theta offsets
+[ ] view parts/layers
+[ ] auto optimizing params
+[ ] slider links
+[ ] add rotaries to computed points
+[ ] resample high velocity traces
