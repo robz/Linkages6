@@ -89,7 +89,6 @@ export function updateHingeParamsWithLengths(
     const dx = x1 - x0;
     const dy = y1 - y0;
     const l2 = Math.sqrt(dx ** 2 + dy ** 2);
-    console.log(l2, l1, l0);
     if (l2 > l0 + l1 || l0 > l2 + l1 || l1 > l2 + l0) {
         throw new Error("lengths don't make a triangle");
     }
@@ -150,6 +149,32 @@ function calcHinge(
     return {x: x2, y: y2};
 }
 
+function calcSlider({x: x1, y: y1}, {x: x2, y: y2}, len) {
+    const alpha = Math.atan2(y2 - y1, x2 - x1);
+    const p3 = {x: x1 + len * Math.cos(alpha), y: y1 + len * Math.sin(alpha)};
+    if (distance(p3, {x: x1, y: y1}) < distance({x: x2, y: y2}, {x: x1, y: y1})) {
+        throw new Error("slider is over extended");
+    }
+    return p3;
+}
+
+function toUnit(v) {
+    const l = Math.sqrt(v.x ** 2 + v.y ** 2);
+    return {x: v.x/l, y: v.y/l};
+}
+
+function dot(v0, v1) {
+    return v0.x * v1.x + v0.y * v1.y;
+}
+
+export function projectSlider(p0, p1, p2Hover) {
+    const v0 = {x: p0.x - p1.x, y: p0.y - p1.y};
+    const v2 = {x: p2Hover.x - p0.x, y: p2Hover.y - p0.y};
+    const v0u = toUnit(v0);
+    const proj = dot(v2, v0u);
+    return {x: p0.x + proj * v0u.x, y: p0.y + proj * v0u.y};
+}
+
 export function computePoints(linkage, theta) {
     const points = {};
     // add ground points
@@ -165,7 +190,6 @@ export function computePoints(linkage, theta) {
                 const p0 = points[link.p0];
                 const len = linkage.params[link.len];
                 const thetaOffset = linkage.params[link.theta];
-                points[link.p0] = p0;
                 points[link.p1] = {
                     x: Math.cos(theta + thetaOffset) * len + p0.x,
                     y: Math.sin(theta + thetaOffset) * len + p0.y,
@@ -177,8 +201,14 @@ export function computePoints(linkage, theta) {
                 const p1 = points[link.p1];
                 const pt = points[link.pt];
                 const l2t = linkage.params[link.l2t];
-                points[link.p1] = p1;
                 points[link.p2] = calcHinge(p0, p1, pt, l2t);
+                break;
+            }
+            case 'slider': {
+                const p0 = points[link.p0];
+                const p1 = points[link.p1];
+                const len = linkage.params[link.len];
+                points[link.p2] = calcSlider(p0, p1, len);
                 break;
             }
         }
@@ -196,15 +226,20 @@ export function computeTraces(linkage, n=100) {
     const traces = {};
 
     let k = 0;
+    let computed = false;
     function f(i) {
         const theta = i / n * 2 * Math.PI;
         let points = null;
         try {
             points = computePoints(linkage, theta);
         } catch (e) {
-            k += 1;
+            if (computed) {
+                k += 1;
+                computed = false;
+            }
             return;
         }
+        computed = true;
         for (const key of Object.keys(points)) {
             if (!groundPoints.has(key)) {
                 if (!(key in traces)) {
@@ -221,8 +256,31 @@ export function computeTraces(linkage, n=100) {
         f(i);
     }
     f(0); // loop back
+    return traces;
+}
 
-    return Object.values(traces).flat();
+export function transposeTraces(linkage, traces) {
+    const groundPoints = {};
+    for (const key of Object.keys(linkage.params)) {
+        if (key.startsWith('p') && !key.startsWith('pt')) {
+            groundPoints[key] = linkage.params[key];
+        }
+    }
+
+    const pointsList = [];
+    for (const [pKey, pTraces] of Object.entries(traces)) {
+        let i = 0;
+        for (const pTrace of pTraces) {
+            for (const p of pTrace) {
+                if (pointsList.length <= i) {
+                    pointsList.push({...groundPoints});
+                }
+                pointsList[i][pKey] = p;
+                i += 1;
+            }
+        }
+    }
+    return pointsList;
 }
 
 export function scalePoint(p0, p1, d) {
@@ -248,15 +306,32 @@ export function scaleTransform(transform, sx, sy) {
     transform[1][2] *= sy;
 }
 
+export function rotateTransform(transform, theta) {
+    const c = Math.cos(-theta);
+    const s = Math.sin(-theta);
+    const [[t00, t01, t02], [t10, t11, t12]] = transform;
+    transform[0][0] = c * t00 + s * t10;
+    transform[0][1] = c * t01 + s * t11;
+    transform[0][2] = c * t02 + s * t12;
+    transform[1][0] = -s * t00 + c * t10;
+    transform[1][1] = -s * t01 + c * t11;
+    transform[1][2] = -s * t02 + c * t12;
+}
+
 export function browserToLinkCoords(transform, {x, y}) {
-    const invTransform = [
-        [1 / transform[0][0], 0, -transform[0][2] / transform[0][0]],
-        [0, 1 / transform[1][1], -transform[1][2] / transform[1][1]],
-        [0, 0, 1],
+    const [[t00, t01, t02], [t10, t11, t12], [t20, t21, t22]] = transform;
+    const det = t00 * (t11 * t22) - t01 * (t10 * t22);
+    if (det === 0) {
+        throw new Error("Matrix is singular and cannot be inverted.");
+    }
+    const inv = [
+        [t11 * t22, -t01 * t22, t01 * t12 - t02 * t11],
+        [-t10 * t22, t00 * t22, t02 * t10 - t00 * t12],
+        [0, 0, t00 * t11 - t01 * t10],
     ];
     return {
-        x: invTransform[0][0] * x + invTransform[0][2],
-        y: invTransform[1][1] * y + invTransform[1][2],
+        x: (inv[0][0] * x + inv[0][1] * y + inv[0][2]) / det,
+        y: (inv[1][0] * x + inv[1][1] * y + inv[1][2]) / det,
     };
 }
 
@@ -267,47 +342,44 @@ export function linkToBrowserCoords(transform, {x, y}) {
     };
 }
 
-// Non functional code
-/*
-function toLayers(linkage) {
-    // compute connection map
-    const connections; // Map<key, Set<key>>
-
-    // compute intersections map
-    const intersections; // Map<key, Set<key>>
-
-    // convert to list of linkts
-    const linkLayers = {}; // {key: layerNumber}
-
-    for (const key of links) {
-        let layer;
-        let canidateLayers = [];
-        for (const c of connections.get(key)) {
-            const cLayer = linkLayers[c];
-            if (cLayer != null) {
-                // 2 possibilities per connection -- above or below
-                canidateLayers.push(cLayer + 1).push(cLayer - 1);
-            }
-        }
-        if (canidateLayers.length === 0) {
-            // No connections have been visited yet, default to first layer
-            layer = 0;
-        } else {
-            const intersectingLayers = new Set(
-                Array.from(intersections[c]).map(
-                    i => linkLayers[i],
-                ).filter(Boolean)
-            );
-            canidateLayers = canidateLayers.filter(layer => intersectingLayers.has(layer));
-            if (canidateLayers.length === 0) {
-                throw new Error('no candidates after intersection test');
-            } else {
-                layer = canidateLayers[0];
-            }
-        }
-        linkLayers[key] = layer;
+export function lineSegmentsIntersect(p0, p1, p2, p3) {
+    function cross(p, q) {
+        return p.x * q.y - p.y * q.x;
     }
 
-    return linkLayers;
+    function subtract(p, q) {
+        return { x: p.x - q.x, y: p.y - q.y };
+    }
+
+    function isBetween(a, b, c) {
+        return Math.min(a, b) <= c && c <= Math.max(a, b);
+    }
+
+    function onSegment(p, q, r) {
+        return isBetween(p.x, q.x, r.x) && isBetween(p.y, q.y, r.y);
+    }
+
+    let d1 = cross(subtract(p1, p0), subtract(p2, p0));
+    let d2 = cross(subtract(p1, p0), subtract(p3, p0));
+    let d3 = cross(subtract(p3, p2), subtract(p0, p2));
+    let d4 = cross(subtract(p3, p2), subtract(p1, p2));
+
+    if ((d1 * d2 < 0) && (d3 * d4 < 0)) return true; // General case
+
+    // Special cases: check if collinear points are on the segment
+    return (d1 === 0 && onSegment(p0, p1, p2)) ||
+           (d2 === 0 && onSegment(p0, p1, p3)) ||
+           (d3 === 0 && onSegment(p2, p3, p0)) ||
+           (d4 === 0 && onSegment(p2, p3, p1));
 }
-*/
+
+export function platesIntersect(segments0, segments1, computedPoints) {
+    for (const [p0, p1] of segments0) {
+        for (const [p2, p3] of segments1) {
+            if (lineSegmentsIntersect(...[p0, p1, p2, p3].map(p => computedPoints[p]))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}

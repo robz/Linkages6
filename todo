@@ -10,12 +10,61 @@ todo
 [x] fix deleting unchanging link
 [x] make scale/zoom display-only
 [x] simplify scale/zoom and normalize dimensions
-[ ] rotate base plane
-[ ] center hotkey
-[ ] set point positions
-[ ] set theta offsets
-[ ] view parts/layers
-[ ] auto optimizing params
-[ ] slider links
-[ ] add rotaries to computed points
+[x] rotate base plane
+[x] center hotkey
+[x] set point positions
+[x] slider links - add, delete, move, draw, set length
+[x] bold/red trace for hover point, fix multitrace bug
+[x] extra state/actions for sliders
+[x] fix click-after-click bug
+[x] recompute plates on change/generalize trace computation
+[x] draw linkage with plates
+[x] draw plates as the original triangles
+[x] fix slider drawing bug
+[x] refactor computePlanes to reuse traces
+[x] compute plates that pass through connection points
+[x] use search algoirthm instead of greedy algorithm for planing
+[x] handle connection points that have > 2 plates [1]
+[x] clean up plane computation
+[x] gracefully handle case where no planing solution is possible
+[x] convert to layers
+[x] change rotate hotkey 
+[x] fix slider layering bug
+
+[ ] fix return from laser cutting bug
+[ ] add menu describing all hotkeys
+
+[ ] draw sliders with plates
+[ ] compute laser-cuttable connectors between plates
+[ ] view parts as laser-cuttable svg
+[ ] view parts as json
+[ ] grid view
+[ ] auto optimize params
+[ ] set gear ratios between rotaries
+[ ] publish as web app
+
+[ ] add hotkey menu
+[ ] compute 3d-printable connectors between plates
+[ ] export to openscad
+[ ] allow rotaries on computed points
 [ ] resample high velocity traces
+[ ] indicate trace velocity with color
+[ ] set theta phases with input boxes
+[ ] add real slider link, rename existing slider to pivot link 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1] http://localhost:9000/?linkage=%7B%22n%22%3A39%2C%22params%22%3A%7B%22p0%22%3A%7B%22x%22%3A-0.11088709677419324%2C%22y%22%3A-1.542338709677419%7D%2C%22len2%22%3A1%2C%22theta2%22%3A0%2C%22p18%22%3A%7B%22x%22%3A2.6411290322580636%2C%22y%22%3A-1.3709677419354833%7D%2C%22pt19%22%3A%7B%22x%22%3A1.1005697425396974%2C%22y%22%3A1.494976297907602%7D%2C%22l2t20%22%3A2.602674530506459%2C%22p26%22%3A%7B%22x%22%3A2.046370967741934%2C%22y%22%3A0.8669354838709681%7D%2C%22len28%22%3A1.4788000662009877%2C%22theta29%22%3A-3.56477141124423%2C%22pt30%22%3A%7B%22x%22%3A1.4839674013641482%2C%22y%22%3A-2.0695990053117823%7D%2C%22l2t31%22%3A3.316655999250704%7D%2C%22links%22%3A%5B%7B%22type%22%3A%22rotary%22%2C%22p0%22%3A%22p0%22%2C%22p1%22%3A%22p1%22%2C%22len%22%3A%22len2%22%2C%22theta%22%3A%22theta2%22%7D%2C%7B%22type%22%3A%22hinge%22%2C%22p0%22%3A%22p1%22%2C%22p1%22%3A%22p18%22%2C%22pt%22%3A%22pt19%22%2C%22l2t%22%3A%22l2t20%22%2C%22p2%22%3A%22p21%22%7D%2C%7B%22type%22%3A%22rotary%22%2C%22p0%22%3A%22p26%22%2C%22p1%22%3A%22p27%22%2C%22len%22%3A%22len28%22%2C%22theta%22%3A%22theta29%22%7D%2C%7B%22type%22%3A%22hinge%22%2C%22p0%22%3A%22p27%22%2C%22p1%22%3A%22p21%22%2C%22pt%22%3A%22pt30%22%2C%22l2t%22%3A%22l2t31%22%2C%22p2%22%3A%22p32%22%7D%5D%7D 

@@ -1,7 +1,37 @@
-import {findNearestLink, findNearestPoint, computePoints, computeTraces, browserToLinkCoords, translateTransform, scaleTransform} from './geometry.js';
 import {updateState} from './state.js';
-import {initCanvas, drawState, drawLink, drawTraces, RADIUS, drawLengths, removeLengths} from './draw.js';
-import {movePoint, getSegments, getGroundPointRefs, getPointRefs, setLinkLength} from './linkage.js';
+import {
+    findNearestLink,
+    findNearestPoint,
+    computePoints,
+    computeTraces,
+    browserToLinkCoords,
+    linkToBrowserCoords,
+    translateTransform,
+    scaleTransform,
+    rotateTransform,
+    transposeTraces,
+} from './geometry.js';
+import {
+    initCanvas, 
+    drawState,
+    drawTraces,
+    RADIUS,
+    drawParams,
+    removeLengths,
+    drawPlates,
+    drawLinkage,
+    drawSVG,
+    drawStaticSVG,
+    initSVG,
+} from './draw.js';
+import {
+    movePoint,
+    getSegments,
+    getPointRefs,
+    setLinkLength,
+    setGroundPoint,
+    computePlanes,
+} from './linkage.js';
 
 // Initialize last point clicked and hover point
 let state = {type: 'init'};
@@ -10,11 +40,10 @@ let hoverLink = null;
 let theta = 0;
 let isPaused = false;
 let speed = 1;
-let tracing = false;
-let traces = null;
 let showLengths = false;
-
+let showSVG = false;
 const {ctx, canvas} = initCanvas();
+const svg = initSVG();
 
 // transform to zoom/rotate canvas
 const transform = [
@@ -22,81 +51,100 @@ const transform = [
     [0, 1, 0],
     [0, 0, 1],
 ];
-
-function setTransform() {
-    ctx.setTransform(
-        transform[0][0], transform[1][0],
-        transform[0][1], transform[1][1],
-        transform[0][2], transform[1][2]
-    );
-}
-
 const minDim = Math.min(canvas.width, canvas.height);
 scaleTransform(transform, minDim/10, -minDim/10);
 translateTransform(transform, canvas.width/2, canvas.height/2);
-setTransform();
 
 const urlLinkage = new URLSearchParams(location.search).get('linkage');
-export let linkage = urlLinkage != null ? JSON.parse(urlLinkage) : {
+let linkage = urlLinkage != null ? JSON.parse(urlLinkage) : {
     n: 3,
     params: {p0: {x: 0, y: 0}, len2: 1, theta2: 0},
     links: [{type: 'rotary', p0: 'p0', p1: 'p1', len: 'len2', theta: 'theta2'}],
 };
-export let computedPoints = computePoints(linkage, theta);
+let computedPoints = computePoints(linkage, theta);
+
+let showTraces = false;
+let traces = null;
+let showPlates = false;
+let plateInfo = null;
+function updateDerivedState() {
+    if (showTraces || showPlates || showSVG) {
+        traces = computeTraces(linkage);
+    }
+    if (showPlates || showSVG) {
+        plateInfo = computePlanes(linkage, transposeTraces(linkage, traces));
+    }
+}
 
 // Click and drag a point
 canvas.addEventListener('mousedown', (event) => {
     if (state.type !== 'init') {
         return;
     }
-    const p = browserToLinkCoords(transform, {x: event.clientX, y: event.clientY});
+    const op = {x: event.clientX, y: event.clientY};
+    const p = browserToLinkCoords(transform, op);
     const pointRefs = getPointRefs(linkage);
     const nearestPointRef = findNearestPoint(pointRefs, computedPoints, p, RADIUS)?.[0];
     if (nearestPointRef) {
         state = {type: 'dragging', pRef: nearestPointRef, dragged: false};
     } else {
-        state = {type: 'dragging-bg', p, dragged: false};
+        state = {type: 'dragging-bg', p0: op, p1: op, dragged: false};
     }
 });
 
+function getRotation({x, y}) {
+    x = x - canvas.width / 2;
+    y = canvas.height / 2 - y;
+    return -Math.atan2(y, x);
+}
+
+function computeHovers(p) {
+    const pointRefs = getPointRefs(linkage);
+    const nearestPointRef = findNearestPoint(pointRefs, computedPoints, p, RADIUS)?.[0];
+    hoverPoint = nearestPointRef ?? p;
+    if (nearestPointRef == null) {
+        hoverLink = findNearestLink(getSegments(linkage), computedPoints, p, RADIUS);
+    } else {
+        hoverLink = null;
+    }
+}
+
 // Draw a line from the last clicked point to the current mouse position
 canvas.addEventListener('mousemove', (event) => {
-    const p = browserToLinkCoords(transform, {x: event.clientX, y: event.clientY});
+    const op = {x: event.clientX, y: event.clientY};
+    const p = browserToLinkCoords(transform, op);
     if (state.type === 'dragging') {
         state.dragged = true;
         movePoint(linkage, computedPoints, theta, state.pRef, p);
-        if (tracing) {
-            traces = computeTraces(linkage);
-        }
+        updateDerivedState();
     } else if (state.type === 'dragging-bg') {
         state.dragged = true;
-        const dx = p.x - state.p.x;
-        const dy = p.y - state.p.y;
-        // shift all ground points by how much the mouse moved
-        for (const pRef of getGroundPointRefs(linkage)) {
-            const p = linkage.params[pRef];
-            p.x += dx;
-            p.y += dy;
-        }
-        if (tracing) {
-            traces = computeTraces(linkage);
-        }
-        state.p = p;
-    } else {
-        const pointRefs = getPointRefs(linkage);
-        const nearestPointRef = findNearestPoint(pointRefs, computedPoints, p, RADIUS)?.[0];
-        hoverPoint = nearestPointRef ?? p;
-        if (nearestPointRef == null) {
-            hoverLink = findNearestLink(getSegments(linkage), computedPoints, p, RADIUS);
+        translateTransform(transform, op.x - state.p1.x, op.y - state.p1.y);
+        state.p1 = op;
+    } else if (state.type === 'rotating') {
+        const theta = getRotation(op);
+        if (state.theta != null) {
+            const dTheta = theta - state.theta;
+            translateTransform(transform, -canvas.width/2, -canvas.height/2);
+            rotateTransform(transform, dTheta);
+            translateTransform(transform, canvas.width/2, canvas.height/2);
         } else {
-            hoverLink = null;
+            state.theta0 = theta;
         }
+        state.theta = theta;
+    } else {
+        computeHovers(p);
     }
 });
 
 // Clicking the canvas draws a small black circle there, and then a line to where the mouse is hovering over
 canvas.addEventListener('click', (event) => {
-    if (state.type === 'dragging' || state.type === 'dragging-bg') {
+    if (state.type === 'rotating') {
+        state = {
+            type: 'init', 
+        };
+        return;
+    } else if (state.type === 'dragging' || state.type === 'dragging-bg') {
         const {dragged} = state;
         state = {type: 'init'};
         if (dragged) {
@@ -116,32 +164,99 @@ canvas.addEventListener('click', (event) => {
     }
     
     state = updateState(state, action, linkage, computedPoints);
-    if (tracing) {
-        traces = computeTraces(linkage);
-    }
-});
+    updateDerivedState();
+    computedPoints = computePoints(linkage, theta);
+    computeHovers(browserToLinkCoords(transform, {x: event.clientX, y: event.clientY}));
+}); 
+
+function downloadSVG() {
+    console.log('hi?');
+    const filename = 'linkage.svg';
+    const svg = document.getElementById("svgCanvas");
+
+    // Get the SVG XML as a string
+    const svgData = new XMLSerializer().serializeToString(svg);
+
+    // Create a Blob and an Object URL
+    const blob = new Blob([svgData], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary <a> element to trigger the download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
 // Hits esc resets the state
 document.addEventListener('keydown', (event) => {
     switch (event.key) {
-        // Hit Escape to reset the state
-        case 'Escape':
+        // Hit Backspace or Escape to reset the state
         case 'Backspace':
+        case 'Escape':
             state = {type: 'init'};
-            break;
-        // Hit space to toggle pause
-        case ' ':
-            isPaused = !isPaused;
             break;
         // Hit c to change direction
         case 'c':
             speed *= -1;
             break;
-        // Hit t to toggle tracing
+        // Hit d to delete a link
+        case 'd':
+            if (showSVG) {
+                downloadSVG();
+            } else if (state.type === 'init') {
+                state = updateState(state, {type: 'd', p0: hoverPoint}, linkage, computedPoints);
+                hoverPoint = null;
+                updateDerivedState();
+            } 
+            break;
+        // Hit i to add a slider link
+        case 'i': {
+            state = {type: 'slider'};
+            break;
+        }
+        // Hold down r to add another rotary link
+        case 'r':
+            state = {type: 'r'};
+            break;
+        // Hit s to save to URL
+        case 's': 
+            location.search = new URLSearchParams({linkage: JSON.stringify(linkage)}).toString();
+            break;
+        // Hold down Shift to rotate the canvas
+        case 'Shift': {
+            state = {
+                type: 'rotating',
+                theta: null,
+                theta0: null,
+            };
+            break;
+        }
+        // Hit space to toggle pause
+        case ' ':
+            isPaused = !isPaused;
+            break;
+        // Hit t to toggle traces
         case 't':
-            tracing = !tracing;
-            if (tracing) {  
-                traces = computeTraces(linkage);
+            showTraces = !showTraces;
+            updateDerivedState();
+            break;
+        case 'v':
+            showSVG = !showSVG;
+            if (showSVG) {
+                updateDerivedState();
+
+                // hide the canvas
+                canvas.style.display = 'none';
+                svg.style.display = 'block';
+            } else {
+                canvas.style.display = 'block';
+                svg.style.display = 'none';
             }
             break;
         // Hit l to toggle lengths
@@ -151,30 +266,34 @@ document.addEventListener('keydown', (event) => {
                 removeLengths();
             }
             break;
-        // Hit d to delete a link
-        case 'd':
-            if (state.type === 'init') {
-                state = updateState(state, {type: 'd', p0: hoverPoint}, linkage, computedPoints);
-                hoverPoint = null;
-                if (tracing) { 
-                    traces = computeTraces(linkage);
-                }
-            }
+        // Hit p to toggle plates
+        case 'p': {
+            showPlates = !showPlates;
+            updateDerivedState();
             break;
-        // Hit d to save to URL
-        case 's': 
-            location.search = new URLSearchParams({linkage: JSON.stringify(linkage)}).toString();
+        }
+        // Hold down x to center the canvas
+        case 'x': {
+            // get the latest version of traces
+            traces = computeTraces(linkage);
+            const flatTraces = Object.values(traces).flat();
+            // get min and max x and y across all traces
+            const xs = flatTraces.flatMap(trace => trace.map(p => p.x));
+            const ys = flatTraces.flatMap(trace => trace.map(p => p.y));
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            const center = linkToBrowserCoords(transform, {x: (minX + maxX) / 2, y: (minY + maxY) / 2});
+            translateTransform(transform, canvas.width / 2 - center.x, canvas.height / 2 - center.y);
             break;
+        }
         // +/- to change speed
         case '+':
             speed *= 1.1;
             break;
         case '-':
             speed *= 0.9;
-            break;
-        // Hold down r to add another rotary link
-        case 'r':
-            state = {type: 'r'};
             break;
         default:
             console.log(event.key);
@@ -184,7 +303,7 @@ document.addEventListener('keydown', (event) => {
 
 document.addEventListener('keyup', (event) => {
     switch (event.key) {
-        case 'q':
+        case 'Shift':
             state = {type: 'init'};
             break;
         default:
@@ -201,38 +320,43 @@ document.addEventListener('mousewheel', (event) => {
     translateTransform(transform, -x, -y);
     scaleTransform(transform, zoom, zoom);
     translateTransform(transform, x, y);
-    setTransform();
 });
 
-let focusLength = null;
-const lengthHandlers = {
+let focusID = null;
+
+const paramHandlers = {
     focus(e) {
-        focusLength = e.target.id;
+        focusID = e.target.id;
     },
     blur(e) {
-        focusLength = null;
+        focusID = null;
     },
     keydown(e) {
-        if (e.target.id !== focusLength) {
+        if (e.target.id !== focusID) {
             return;
         }
+        const newValue = Number(e.target.value);
         switch (e.key) {
-            case 'Enter':
-                setLinkLength(linkage, theta, computedPoints, focusLength, Number(e.target.value));
-                if (tracing) {
-                    traces = computeTraces(linkage);
-                }
+            case 'Escape':
                 e.target.blur();
                 break;
-            case 'Escape':
+            case 'Enter':
+                if (focusID.startsWith('param-len-')) {
+                    setLinkLength(linkage, theta, computedPoints, focusID, newValue);
+                } else {
+                    setGroundPoint(linkage, theta, focusID, newValue);
+                }
+                updateDerivedState();
                 e.target.blur();
                 break;
             case 'ArrowUp':
             case 'ArrowDown':
-                setLinkLength(linkage,  theta, computedPoints, focusLength, Number(e.target.value));
-                if (tracing) {
-                    traces = computeTraces(linkage);
+                if (focusID.startsWith('param-len-')) {
+                    setLinkLength(linkage, theta, computedPoints, focusID, newValue);
+                } else {
+                    setGroundPoint(linkage, theta, focusID, newValue);
                 }
+                updateDerivedState();
                 break;
         }
     }
@@ -255,38 +379,30 @@ function draw() {
         computedPoints = computePoints(linkage, theta);
     }
 
-    const {x: sx, y: sy} = browserToLinkCoords(transform, {x: 0, y: 0});
-    const {x: ex, y: ey} = browserToLinkCoords(transform, {x: canvas.width, y: canvas.height});
-    ctx.clearRect(sx, sy, ex - sx, ey - sy);
-
-    // draw all links
-    for (const link of linkage.links) {
-        switch (link.type) {
-            case 'rotary':
-                drawLink(computedPoints, link.p0, link.p1, 'black');
-                break;
-            case 'hinge':
-                drawLink(computedPoints, link.p0, link.p2, 'black');
-                drawLink(computedPoints, link.p1, link.p2, 'black');
-                break;
+    if (showSVG) {
+        // drawSVG(svg, linkage, computedPoints, transform);
+        drawStaticSVG(svg, linkage, computedPoints, transform, plateInfo);
+        return;
+    } else {
+        ctx.resetTransform();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(
+            transform[0][0], transform[1][0],
+            transform[0][1], transform[1][1],
+            transform[0][2], transform[1][2]
+        );
+        if (showPlates && plateInfo != null) {
+            drawPlates(computedPoints, plateInfo);
+        } else {
+            drawLinkage(computedPoints, linkage);
         }
-    }
-
-    drawState(computedPoints, state, hoverPoint, hoverLink, theta);
-
-    if (typeof hoverPoint === 'string') {
-        ctx.beginPath();
-        ctx.fillStyle = 'lightGray';
-        ctx.arc(computedPoints[hoverPoint].x, computedPoints[hoverPoint].y, RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    if (tracing) {
-        drawTraces(traces);
-    }
-
-    if (showLengths) {
-        drawLengths(getSegments(linkage), computedPoints, lengthHandlers, focusLength, transform);
+        drawState(computedPoints, linkage, state, hoverPoint, hoverLink, theta);
+        if (showTraces) {
+            drawTraces(traces, hoverPoint);
+        }
+        if (showLengths) {
+            drawParams(linkage, computedPoints, paramHandlers, focusID, transform);
+        }
     }
 
     requestAnimationFrame(draw);
