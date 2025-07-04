@@ -232,10 +232,13 @@ const KEYS = {
   v: 'Toggle laser cuttable SVG',
   h: 'Toggle help menu',
   l: 'Toggle lengths',
-  p: 'Toggle plates',
+  p: 'Toggle colored plates/layers',
   x: 'Center the canvas',
-  '+': 'Increase speed',
-  '-': 'Decrease speed',
+  '+': 'Increase rotary speed',
+  '-': 'Decrease rotary speed',
+  ArrowUp: 'Increase length of selected bar',
+  ArrowDown: 'Decrease length of selecd bar',
+  Enter: 'Set length of bar',
 };
 
 const helpMenu = document.getElementById('helpMenu');
@@ -381,7 +384,7 @@ document.addEventListener('keydown', event => {
 
 document.addEventListener('keyup', event => {
   switch (event.key) {
-    case 'Shift':
+    case Keys.Shift.key:
       state = {type: 'init'};
       break;
     default:
@@ -415,10 +418,10 @@ const paramHandlers = {
     }
     const newValue = Number(e.target.value);
     switch (e.key) {
-      case 'Escape':
+      case Keys.Escape.key:
         e.target.blur();
         break;
-      case 'Enter':
+      case Keys.Enter.key:
         if (focusID.startsWith('param-len-')) {
           setLinkLength(linkage, theta, computedPoints, focusID, newValue);
         } else {
@@ -427,8 +430,8 @@ const paramHandlers = {
         updateDerivedState();
         e.target.blur();
         break;
-      case 'ArrowUp':
-      case 'ArrowDown':
+      case Keys.ArrowUp.key:
+      case Keys.ArrowDown.key:
         if (focusID.startsWith('param-len-')) {
           setLinkLength(linkage, theta, computedPoints, focusID, newValue);
         } else {
