@@ -1,22 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Canvas App</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-        }
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+      #helpMenu {
+        position: absolute;
+        margin: 20px;
+        font-family: 'Courier New';
+        display: flex;
+      }
+      #helpMenuKeys {
+        margin-right: 20px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div id="helpMenu">
+      <div id="helpMenuKeys">
+      </div>
+      <div id="helpMenuDescs">
+      </div>
+    </div>
     <canvas id="canvas"></canvas>
     <svg id="svgCanvas"></svg>
     <script type="module" src="index.js"></script>
-</body>
+  </body>
 </html>
