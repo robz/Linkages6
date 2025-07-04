@@ -30,9 +30,8 @@ todo
 [x] convert to layers
 [x] change rotate hotkey 
 [x] fix slider layering bug
-
-[ ] fix return from laser cutting bug
-[ ] add menu describing all hotkeys
+[x] fix return from svg frozen bug
+[ ] add hotkey menu
 
 [ ] draw sliders with plates
 [ ] compute laser-cuttable connectors between plates
@@ -43,7 +42,6 @@ todo
 [ ] set gear ratios between rotaries
 [ ] publish as web app
 
-[ ] add hotkey menu
 [ ] compute 3d-printable connectors between plates
 [ ] export to openscad
 [ ] allow rotaries on computed points

@@ -1,161 +1,167 @@
 function createsSandwichWithPassThru(passThrus, plate, plane, plateToPlane) {
-    // check if the plate is going into an existing sandwich
-    for (const [plate2, platePassThrus] of passThrus.entries()) {
-        if (plate2 === plate) {
-            // check if the plate is being inserted into an existing sandwich
-            for (const plates of platePassThrus) {
-                const planes = [...plates].map(
-                    p => plateToPlane.get(p)
-                ).filter(p => p != null);
-                const minPlane = Math.min(...planes);
-                const maxPlane = Math.max(...planes);
-                if (minPlane < plane && plane < maxPlane) {
-                    return true;
-                }
-            }
-        } else {
-            const plane2 = plateToPlane.get(plate2);
-            if (plane2 == null) {
-                // the inside plate must be assigned to a plane
-                // in order to enclose a sandwich
-                continue;
-            }
-            for (const plates of platePassThrus) {
-                if (!plates.has(plate)) {
-                    // the checked plate isn't part of this connection point
-                    continue;
-                }
-                const planes = [...plates].map(p => 
-                    p === plate ? plane : plateToPlane.get(p)
-                ).filter(p => p != null);
-                const minPlane = Math.min(...planes);
-                const maxPlane = Math.max(...planes);
-                if (minPlane < plane2 && plane2 < maxPlane) {
-                    return true;
-                }
-            }
+  // check if the plate is going into an existing sandwich
+  for (const [plate2, platePassThrus] of passThrus.entries()) {
+    if (plate2 === plate) {
+      // check if the plate is being inserted into an existing sandwich
+      for (const plates of platePassThrus) {
+        const planes = [...plates]
+          .map(p => plateToPlane.get(p))
+          .filter(p => p != null);
+        const minPlane = Math.min(...planes);
+        const maxPlane = Math.max(...planes);
+        if (minPlane < plane && plane < maxPlane) {
+          return true;
         }
+      }
+    } else {
+      const plane2 = plateToPlane.get(plate2);
+      if (plane2 == null) {
+        // the inside plate must be assigned to a plane
+        // in order to enclose a sandwich
+        continue;
+      }
+      for (const plates of platePassThrus) {
+        if (!plates.has(plate)) {
+          // the checked plate isn't part of this connection point
+          continue;
+        }
+        const planes = [...plates]
+          .map(p => (p === plate ? plane : plateToPlane.get(p)))
+          .filter(p => p != null);
+        const minPlane = Math.min(...planes);
+        const maxPlane = Math.max(...planes);
+        if (minPlane < plane2 && plane2 < maxPlane) {
+          return true;
+        }
+      }
     }
-    return false;
+  }
+  return false;
 }
 
 function scoreSolution(plateToPlane) {
-    const scores = plateToPlane.values();
-    return Math.max(...scores) - Math.min(...scores) + 1;
+  const scores = plateToPlane.values();
+  return Math.max(...scores) - Math.min(...scores) + 1;
 }
 
 let calls = 0;
 function layerPlatesAux(
-    plates,
-    connections,
-    intersections,
-    passThrus,
-    plateIndex,
-    plateToPlane,
-    planeToPlates,
-    solutions,
-    minScoreParam,
+  plates,
+  connections,
+  intersections,
+  passThrus,
+  plateIndex,
+  plateToPlane,
+  planeToPlates,
+  solutions,
+  minScoreParam,
 ) {
-    calls += 1;
-    if (plateIndex >= plates.length) {
-        solutions.push(plateToPlane);
-        return scoreSolution(plateToPlane);
+  calls += 1;
+  if (plateIndex >= plates.length) {
+    solutions.push(plateToPlane);
+    return scoreSolution(plateToPlane);
+  }
+
+  const plate = plates[plateIndex];
+  const plateConnections = connections.get(plate);
+  const plateIntersections = intersections.get(plate);
+  let minScore = minScoreParam;
+
+  for (let plane = 0; plane < plates.length; plane++) {
+    const newPlateToPlane = new Map(plateToPlane).set(plate, plane);
+    if (scoreSolution(newPlateToPlane) >= minScore) {
+      // This solution is worse than the best solution found so far
+      continue;
+    } else if (
+      (planeToPlates.get(plane) ?? []).some(
+        otherPlate =>
+          plateConnections.has(otherPlate) ||
+          plateIntersections.has(otherPlate),
+      )
+    ) {
+      // The plate connects or interects with an existing plate in this plane
+      continue;
+    } else if (
+      createsSandwichWithPassThru(passThrus, plate, plane, plateToPlane)
+    ) {
+      // Adding the plate to this plane would create a sandwich
+      continue;
     }
 
-    const plate = plates[plateIndex];
-    const plateConnections = connections.get(plate);
-    const plateIntersections = intersections.get(plate);
-    let minScore = minScoreParam;
+    minScore = layerPlatesAux(
+      plates,
+      connections,
+      intersections,
+      passThrus,
+      plateIndex + 1,
+      newPlateToPlane,
+      new Map(planeToPlates).set(
+        plane,
+        (planeToPlates.get(plane) || []).concat([plate]),
+      ),
+      solutions,
+      minScore,
+    );
+  }
 
-    for (let plane = 0; plane < plates.length; plane++) {
-        const newPlateToPlane = new Map(plateToPlane).set(plate, plane);
-        if (scoreSolution(newPlateToPlane) >= minScore) {
-            // This solution is worse than the best solution found so far
-            continue;
-        } else if ((planeToPlates.get(plane) ?? []).some(otherPlate => 
-            plateConnections.has(otherPlate) || plateIntersections.has(otherPlate)
-        )) {
-            // The plate connects or interects with an existing plate in this plane
-            continue;
-        } else if (createsSandwichWithPassThru(passThrus, plate, plane, plateToPlane)) {
-            // Adding the plate to this plane would create a sandwich
-            continue;
-        }
-
-        minScore = layerPlatesAux(
-            plates,
-            connections,
-            intersections,
-            passThrus,
-            plateIndex + 1,
-            newPlateToPlane,
-            new Map(planeToPlates).set(plane, (planeToPlates.get(plane) || []).concat([plate])),
-            solutions,
-            minScore,
-        );
-    }
-
-    return minScore;
+  return minScore;
 }
 
 function isShiftOrMirror(solution1, solution2) {
-    const planes = Array.from(solution1.keys());
-    const ps1 = planes.map(plane => solution1.get(plane));
-    const ps1Min = Math.min(...ps1);
-    const ps2 = planes.map(plane => solution2.get(plane));
-    const ps2Min = Math.min(...ps2);
-    const ps2Max = Math.max(...ps2);
-    return (
-        // Check if one solution is a shift of the other
-        ps1.every((p1, i) => (p1 - ps1Min) === (ps2[i] - ps2Min)) ||
-        // Check if one solution is a mirror of the other
-        ps1.every((p1, i) => (p1 - ps1Min) === (ps2Max - ps2[i]))
-    );
+  const planes = Array.from(solution1.keys());
+  const ps1 = planes.map(plane => solution1.get(plane));
+  const ps1Min = Math.min(...ps1);
+  const ps2 = planes.map(plane => solution2.get(plane));
+  const ps2Min = Math.min(...ps2);
+  const ps2Max = Math.max(...ps2);
+  return (
+    // Check if one solution is a shift of the other
+    ps1.every((p1, i) => p1 - ps1Min === ps2[i] - ps2Min) ||
+    // Check if one solution is a mirror of the other
+    ps1.every((p1, i) => p1 - ps1Min === ps2Max - ps2[i])
+  );
 }
 
-export function layerPlates(
+export function layerPlates(plates, connections, intersections, passThrus) {
+  calls = 0;
+  const solutions = [];
+  const minScore = layerPlatesAux(
     plates,
     connections,
     intersections,
     passThrus,
-) {
-    calls = 0;
-    const solutions = [];
-    const minScore = layerPlatesAux(
-        plates,
-        connections,
-        intersections,
-        passThrus,
-        0, // initial plate index
-        new Map(), // plateToPlane
-        new Map(), // planeToPlates
-        solutions,
-        plates.length + 1, // min score = every plate on its own plane
-    );
+    0, // initial plate index
+    new Map(), // plateToPlane
+    new Map(), // planeToPlates
+    solutions,
+    plates.length + 1, // min score = every plate on its own plane
+  );
 
-    const solutionToScore = new Map(solutions.map(solution => [solution, scoreSolution(solution)]));
-    const bestSolutions = Array.from(solutionToScore.entries())
-        .filter(([_, score]) => score === minScore)
-        .map(([solution]) => solution);
+  const solutionToScore = new Map(
+    solutions.map(solution => [solution, scoreSolution(solution)]),
+  );
+  const bestSolutions = Array.from(solutionToScore.entries())
+    .filter(([_, score]) => score === minScore)
+    .map(([solution]) => solution);
 
-    // Remove solutions that are just shifts/mirrors of other solutions
-    const filteredSolutions = [bestSolutions[0]];
-    for (let i = 1; i < bestSolutions.length; i++) {
-        const solution = bestSolutions[i];
-        let disqualified = false;
-        for (let j = 0; j < i; j++) {
-            const otherSolution = bestSolutions[j];
-            if (isShiftOrMirror(solution, otherSolution)) {
-                disqualified = true;
-                break;
-            }
-        }
-        if (!disqualified) {
-            filteredSolutions.push(solution);
-        }
+  // Remove solutions that are just shifts/mirrors of other solutions
+  const filteredSolutions = [bestSolutions[0]];
+  for (let i = 1; i < bestSolutions.length; i++) {
+    const solution = bestSolutions[i];
+    let disqualified = false;
+    for (let j = 0; j < i; j++) {
+      const otherSolution = bestSolutions[j];
+      if (isShiftOrMirror(solution, otherSolution)) {
+        disqualified = true;
+        break;
+      }
     }
+    if (!disqualified) {
+      filteredSolutions.push(solution);
+    }
+  }
 
-    return filteredSolutions;
+  return filteredSolutions;
 }
 
 /*

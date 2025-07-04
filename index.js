@@ -246,78 +246,79 @@ document.addEventListener('keydown', (event) => {
             showTraces = !showTraces;
             updateDerivedState();
             break;
-        case 'v':
-            showSVG = !showSVG;
-            if (showSVG) {
-                updateDerivedState();
+      case 'v':
+          showSVG = !showSVG;
+          if (showSVG) {
+              updateDerivedState();
 
-                // hide the canvas
-                canvas.style.display = 'none';
-                svg.style.display = 'block';
-            } else {
-                canvas.style.display = 'block';
-                svg.style.display = 'none';
-            }
-            break;
-        // Hit l to toggle lengths
-        case 'l':
-            showLengths = !showLengths;
-            if (!showLengths) {
-                removeLengths();
-            }
-            break;
-        // Hit p to toggle plates
-        case 'p': {
-            showPlates = !showPlates;
-            updateDerivedState();
-            break;
-        }
-        // Hold down x to center the canvas
-        case 'x': {
-            // get the latest version of traces
-            traces = computeTraces(linkage);
-            const flatTraces = Object.values(traces).flat();
-            // get min and max x and y across all traces
-            const xs = flatTraces.flatMap(trace => trace.map(p => p.x));
-            const ys = flatTraces.flatMap(trace => trace.map(p => p.y));
-            const minX = Math.min(...xs);
-            const maxX = Math.max(...xs);
-            const minY = Math.min(...ys);
-            const maxY = Math.max(...ys);
-            const center = linkToBrowserCoords(transform, {x: (minX + maxX) / 2, y: (minY + maxY) / 2});
-            translateTransform(transform, canvas.width / 2 - center.x, canvas.height / 2 - center.y);
-            break;
-        }
-        // +/- to change speed
-        case '+':
-            speed *= 1.1;
-            break;
-        case '-':
-            speed *= 0.9;
-            break;
-        default:
-            console.log(event.key);
-            break;
-    }
+              // hide the canvas
+              canvas.style.display = 'none';
+              svg.style.display = 'block';
+          } else {
+              canvas.style.display = 'block';
+              svg.style.display = 'none';
+              requestAnimationFrame(draw);
+          }
+          break;
+      // Hit l to toggle lengths
+      case 'l':
+          showLengths = !showLengths;
+          if (!showLengths) {
+              removeLengths();
+          }
+          break;
+      // Hit p to toggle plates
+      case 'p': {
+          showPlates = !showPlates;
+          updateDerivedState();
+          break;
+      }
+      // Hold down x to center the canvas
+      case 'x': {
+          // get the latest version of traces
+          traces = computeTraces(linkage);
+          const flatTraces = Object.values(traces).flat();
+          // get min and max x and y across all traces
+          const xs = flatTraces.flatMap(trace => trace.map(p => p.x));
+          const ys = flatTraces.flatMap(trace => trace.map(p => p.y));
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          const center = linkToBrowserCoords(transform, {x: (minX + maxX) / 2, y: (minY + maxY) / 2});
+          translateTransform(transform, canvas.width / 2 - center.x, canvas.height / 2 - center.y);
+          break;
+      }
+      // +/- to change speed
+      case '+':
+          speed *= 1.1;
+          break;
+      case '-':
+          speed *= 0.9;
+          break;
+      default:
+          console.log(event.key);
+          break;
+  }
 });
 
 document.addEventListener('keyup', (event) => {
-    switch (event.key) {
-        case 'Shift':
-            state = {type: 'init'};
-            break;
-        default:
-            break;
-    }
+  switch (event.key) {
+      case 'Shift':
+          state = {type: 'init'};
+          break;
+      default:
+          break;
+  }
 });
 
 document.addEventListener('mousewheel', (event) => {
-    const scaleFactor = 1.01; // Adjust for stronger/weaker zoom
-    const zoom = event.wheelDeltaY < 0 ? 1/scaleFactor : scaleFactor;
-    const x = event.clientX
-    const y = event.clientY;
+  const scaleFactor = 1.01; // Adjust for stronger/weaker zoom
+  const zoom = event.wheelDeltaY < 0 ? 1/scaleFactor : scaleFactor;
+  const x = event.clientX
+  const y = event.clientY;
 
-    translateTransform(transform, -x, -y);
+  translateTransform(transform, -x, -y);
     scaleTransform(transform, zoom, zoom);
     translateTransform(transform, x, y);
 });

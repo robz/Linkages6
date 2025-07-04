@@ -35,86 +35,115 @@ import {addHinge, addRotary, removePoint, addSlider} from './linkage.js';
 // p2 is hinge point, p0,p1 are reference points
 //function addPPG(linkage: Linkage, computedPoints: {[string]: Point}, p0: string, p1: string, p2: Point) {
 function addPPG(linkage, computedPoints, p0Ref, p1Ref, p2) {
-    const p1 = computedPoints[p1Ref];
-    return addHinge(linkage, computedPoints, p0Ref, p1Ref, p1, p2);
+  const p1 = computedPoints[p1Ref];
+  return addHinge(linkage, computedPoints, p0Ref, p1Ref, p1, p2);
 }
 
 // p2 is hinge point, p1 is ground
 //function addPGG(linkage: Linkage, computedPoints: {[string]: Point}, p0: string, p1: Point, p2: Point) {
 function addPGG(linkage, computedPoints, p0Ref, p1, p2) {
-    const p1Ref = `p${linkage.n++}`;
-    linkage.params[p1Ref] = p1;
-    return addHinge(linkage, computedPoints, p0Ref, p1Ref, p1, p2);
+  const p1Ref = `p${linkage.n++}`;
+  linkage.params[p1Ref] = p1;
+  return addHinge(linkage, computedPoints, p0Ref, p1Ref, p1, p2);
 }
 
 //function updateState(state: State, action: Action, linkage: Linkage, computedPoints: {[string]: Point}, ): State {
 export function updateState(state, action, linkage, computedPoints) {
-    console.log(state, action, linkage); 
-    switch (state.type) {
-        case 'init':
-            if (action.type === 'd') {
-                if (typeof action.p0 === 'string') {
-                    return removePoint(linkage, action.p0);
-                } else {
-                    return state;
-                }
-            }
-            return action;
+  console.log(state, action, linkage);
+  switch (state.type) {
+    case 'init':
+      if (action.type === 'd') {
+        if (typeof action.p0 === 'string') {
+          return removePoint(linkage, action.p0);
+        } else {
+          return state;
+        }
+      }
+      return action;
+    case 'p':
+      switch (action.type) {
         case 'p':
-            switch (action.type) {
-                case 'p': return { type: 'pp', p0: state.p0, p1: action.p0};
-                case 'g': return {type: 'pg', p0: state.p0, p1: action.p0};
-                default: return state;
-            }
-        case 'r':
-            switch (action.type) {
-                case 'g': return addRotary(linkage, action.p0);
-                default: return state;
-            }
+          return {type: 'pp', p0: state.p0, p1: action.p0};
         case 'g':
-            switch (action.type) {
-                case 'p': return {type: 'gp', p0: state.p0, p1: action.p0};
-                case 'g': return {type: 'gg', p0: state.p0, p1: action.p0};
-                case 'pp': return addPPG(linkage, computedPoints, action.p0, action.p1, state.p0);
-                default: return state;
-            }
-        case 'pg':
-            switch (action.type) {
-                case 'p': return addPPG(linkage, computedPoints, state.p0, action.p0, state.p1);
-                case 'g': return addPGG(linkage, computedPoints, state.p0, action.p0, state.p1);
-                default: return state;
-            }
-        case 'gp':
-            return action.type === 'g' ? addPGG(linkage, computedPoints, state.p1, state.p0, action.p0) : state;
-        case 'gg':
-            return action.type === 'p' ? addPGG(linkage, computedPoints, action.p0, state.p0, state.p1) : state;
-        case 'pp':
-            return action.type === 'g' ? addPPG(linkage, computedPoints, state.p0, state.p1, action.p0) : state;
-        case 'slider':
-            switch (action.type) {
-                case 'p': return {type: 'slider_p', p0: action.p0};
-                case 'g': return {type: 'slider_g', p0: action.p0};
-                default: return state;
-            }
-        case 'slider_g':
-            return action.type === 'p' ? {type: 'slider_gp', p0: state.p0, p1: action.p0} : state;
-        case 'slider_p':
-            switch (action.type) {
-                case 'p': return {type: 'slider_pp', p0: state.p0, p1: action.p0};
-                case 'g': return {type: 'slider_pg', p0: state.p0, p1: action.p0};
-                default: return state;
-            }
-        case 'slider_pp':
-        case 'slider_pg':
-        case 'slider_gp':
-            return action.type === 'g' ? addSlider(
-                linkage,
-                computedPoints,
-                state,
-                action.p0,
-            ) : state;
+          return {type: 'pg', p0: state.p0, p1: action.p0};
         default:
-            console.warn('unknown state/action', state, action);
-            return state;
-    }
+          return state;
+      }
+    case 'r':
+      switch (action.type) {
+        case 'g':
+          return addRotary(linkage, action.p0);
+        default:
+          return state;
+      }
+    case 'g':
+      switch (action.type) {
+        case 'p':
+          return {type: 'gp', p0: state.p0, p1: action.p0};
+        case 'g':
+          return {type: 'gg', p0: state.p0, p1: action.p0};
+        case 'pp':
+          return addPPG(
+            linkage,
+            computedPoints,
+            action.p0,
+            action.p1,
+            state.p0,
+          );
+        default:
+          return state;
+      }
+    case 'pg':
+      switch (action.type) {
+        case 'p':
+          return addPPG(linkage, computedPoints, state.p0, action.p0, state.p1);
+        case 'g':
+          return addPGG(linkage, computedPoints, state.p0, action.p0, state.p1);
+        default:
+          return state;
+      }
+    case 'gp':
+      return action.type === 'g'
+        ? addPGG(linkage, computedPoints, state.p1, state.p0, action.p0)
+        : state;
+    case 'gg':
+      return action.type === 'p'
+        ? addPGG(linkage, computedPoints, action.p0, state.p0, state.p1)
+        : state;
+    case 'pp':
+      return action.type === 'g'
+        ? addPPG(linkage, computedPoints, state.p0, state.p1, action.p0)
+        : state;
+    case 'slider':
+      switch (action.type) {
+        case 'p':
+          return {type: 'slider_p', p0: action.p0};
+        case 'g':
+          return {type: 'slider_g', p0: action.p0};
+        default:
+          return state;
+      }
+    case 'slider_g':
+      return action.type === 'p'
+        ? {type: 'slider_gp', p0: state.p0, p1: action.p0}
+        : state;
+    case 'slider_p':
+      switch (action.type) {
+        case 'p':
+          return {type: 'slider_pp', p0: state.p0, p1: action.p0};
+        case 'g':
+          return {type: 'slider_pg', p0: state.p0, p1: action.p0};
+        default:
+          return state;
+      }
+    case 'slider_pp':
+    case 'slider_pg':
+    case 'slider_gp':
+      return action.type === 'g'
+        ? addSlider(linkage, computedPoints, state, action.p0)
+        : state;
+    default:
+      console.warn('unknown state/action', state, action);
+      return state;
+  }
 }
