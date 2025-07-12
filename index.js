@@ -384,7 +384,7 @@ document.addEventListener('keydown', event => {
 
 document.addEventListener('keyup', event => {
   switch (event.key) {
-    case Keys.Shift.key:
+    case KEYS.Shift.key:
       state = {type: 'init'};
       break;
     default:

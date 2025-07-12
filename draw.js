@@ -496,45 +496,6 @@ export function drawStaticSVG(
     svg.appendChild(path);
   }
 
-  function drawOutlinedPlus(x, y, diameter, thickness, scale, notchWidth) {
-    const halfOuter = diameter / 2;
-    const halfThickness = thickness / 2;
-    const halfNotch = notchWidth / 2;
-
-    const path = document.createElementNS(svgNS, 'path');
-
-    const d = [
-      // Top notch
-      `M ${x - halfNotch} ${y - halfOuter - thickness}`,
-      `L ${x + halfNotch} ${y - halfOuter - thickness}`,
-      `L ${x + halfNotch} ${y - halfOuter}`,
-
-      // Top vertical arm
-      `L ${x + halfThickness} ${y - halfOuter}`,
-      `L ${x + halfThickness} ${y - halfThickness}`,
-      `L ${x + halfOuter} ${y - halfThickness}`,
-      `L ${x + halfOuter} ${y + halfThickness}`,
-      `L ${x + halfThickness} ${y + halfThickness}`,
-      `L ${x + halfThickness} ${y + halfOuter}`,
-      `L ${x - halfThickness} ${y + halfOuter}`,
-      `L ${x - halfThickness} ${y + halfThickness}`,
-      `L ${x - halfOuter} ${y + halfThickness}`,
-      `L ${x - halfOuter} ${y - halfThickness}`,
-      `L ${x - halfThickness} ${y - halfThickness}`,
-      `L ${x - halfThickness} ${y - halfOuter}`,
-      `L ${x - halfNotch} ${y - halfOuter}`,
-      `Z`,
-    ].join(' ');
-
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'black');
-    path.setAttribute('stroke-width', RADIUS / 2 / 5);
-    path.setAttribute('transform', `scale(${scale})`);
-
-    svg.appendChild(path);
-  }
-
   const drawSVGLink = (
     p0Ref,
     p1Ref,
@@ -568,17 +529,69 @@ export function drawStaticSVG(
     }
   };
 
-  const drawSpacer = (x, y, diameter, scale, thickness) => {
+  const drawCap = (x, y, diameter, plusHeight, scale, thickness) => {
     drawSVGHole(x, y, diameter, scale, 'black');
-    drawPlus(x, y, diameter * 0.6, thickness, scale);
+    drawPlus(x, y, plusHeight, thickness, scale);
+  };
+
+  const drawSpacer = (x, y, diameter, holeDiameter, scale) => {
+    drawSVGHole(x, y, diameter, scale, 'black');
+    drawSVGHole(x, y, holeDiameter, scale, 'red');
+  };
+
+  const drawAxel = (x, y, diameter, scale, thickness, length) => {
+    const thirdHeight = diameter / 3;
+    const halfLength = length / 2;
+
+    let d = [
+      `M ${x} ${y}`,
+      `L ${x + length} ${y}`,
+      `L ${x + length} ${y + thirdHeight}`,
+      `L ${x + halfLength} ${y + thirdHeight}`,
+      `L ${x + halfLength} ${y + thirdHeight*2}`,
+      `L ${x + length} ${y + thirdHeight*2}`,
+      `L ${x + length} ${y + diameter}`,
+      `L ${x} ${y + diameter}`,
+      `Z`,
+    ].join(' ');
+    let path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'black');
+    path.setAttribute('stroke-width', RADIUS / 2 / 5);
+    path.setAttribute('transform', `scale(${scale})`);
+    svg.appendChild(path);
+
+    d = [
+      `M ${x + halfLength*3} ${y + thirdHeight}`,
+      `L ${x + halfLength} ${y + thirdHeight}`,
+      `L ${x + halfLength} ${y + thirdHeight*2}`,
+      `L ${x + length} ${y + thirdHeight*2}`,
+      `L ${x + length} ${y + diameter}`,
+      `L ${x + halfLength} ${y + thirdHeight*3}`,
+      `L ${x + halfLength} ${y + thirdHeight*4}`,
+      `L ${x + halfLength} ${y + thirdHeight*4}`,
+      `L ${x + halfLength*3} ${y + thirdHeight*4}`,
+      `Z`,
+    ].join(' ');
+    path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'black');
+    path.setAttribute('stroke-width', RADIUS / 2 / 5);
+    path.setAttribute('transform', `scale(${scale})`);
+    svg.appendChild(path);
   };
 
   const HEIGHT = 0.39;
+  const THICKNESS = HEIGHT / 4;
+  const PLUS_HEIGHT = HEIGHT * 0.6;
+  const HOLE_DIAM = Math.hypot(PLUS_HEIGHT, THICKNESS)*1.05;
+  const AXEL_LENGTH = THICKNESS * 6;
+
   const MARGIN = 0.3;
   const Y_OFFSET = HEIGHT * 1.5;
-  const HOLE_DIAM = HEIGHT * 0.5;
   const SCALE = 200;
-  const THICKNESS = HEIGHT / 4;
 
   let i = 0;
   for (const plane of plateInfo.planes) {
@@ -598,30 +611,38 @@ export function drawStaticSVG(
     }
   }
 
-  const spacerOffset = HEIGHT + Y_OFFSET * i;
+  const spacerOffset = MARGIN + HEIGHT / 2 + Y_OFFSET * i;
+  const connectorOffset = spacerOffset + Y_OFFSET;
 
   // i*2 spacer, i*2 connectors
   for (let j = 0; j < i * 2; j++) {
-    drawSpacer(
+    drawCap(
       MARGIN + HEIGHT / 2 + HEIGHT * 1.1 * j,
       spacerOffset,
       HEIGHT,
+      PLUS_HEIGHT,
       SCALE,
       THICKNESS,
     );
-  }
-
-  const connectorOffset = HEIGHT + spacerOffset;
-
-  // i*2 spacer, i*2 connectors
-  for (let j = 0; j < i * 2; j++) {
-    drawOutlinedPlus(
+    drawSpacer(
       MARGIN + HEIGHT / 2 + HEIGHT * 1.1 * j,
       connectorOffset,
       HEIGHT,
+      HOLE_DIAM,
+      SCALE,
+    );
+  }
+
+  const axelOffset = connectorOffset + HEIGHT;
+
+  for (let j = 0; j < i; j++) {
+    drawAxel(
+      MARGIN + (AXEL_LENGTH * 2) * j,
+      axelOffset,
+      PLUS_HEIGHT,
       SCALE,
       THICKNESS,
-      HEIGHT / 5,
+      AXEL_LENGTH,
     );
   }
 }
