@@ -20,10 +20,12 @@ import {
   removeLengths,
   drawPlates,
   drawLinkage,
-  drawSVG,
   drawStaticSVG,
-  initSVG,
 } from './draw.js';
+import {
+  initSVG,
+  drawSVG,
+} from './draw_svg.js';
 import {
   movePoint,
   getSegments,
@@ -462,8 +464,9 @@ function draw() {
   }
 
   if (showSVG) {
-    // drawSVG(svg, linkage, computedPoints, transform);
-    drawStaticSVG(svg, linkage, computedPoints, transform, plateInfo);
+    console.log('hi???');
+    //drawStaticSVG(svg, linkage, computedPoints, transform, plateInfo);
+    drawSVG(svg, linkage, computedPoints, plateInfo);
     return;
   } else {
     ctx.resetTransform();

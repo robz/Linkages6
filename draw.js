@@ -393,14 +393,13 @@ const svgNS = 'http://www.w3.org/2000/svg';
 
 export function initSVG() {
   let svg = document.getElementById('svgCanvas');
-  //if (!svg) {
-  //svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute('id', 'svgCanvas');
-  svg.setAttribute('width', window.innerWidth);
-  svg.setAttribute('height', window.innerHeight);
+  const toMM = x => x / 96 * 25.4;
+  const w = toMM(window.innerWidth);
+  const h = toMM(window.innerHeight);
+  svg.setAttribute('width', w + 'mm');
+  svg.setAttribute('height', h + 'mm');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
   svg.style.display = 'none';
-  //document.body.appendChild(svg);
-  //}
   return svg;
 }
 
