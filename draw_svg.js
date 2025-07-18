@@ -2,9 +2,9 @@ import {distance} from './geometry.js';
 
 const svgNS = 'http://www.w3.org/2000/svg';
 
-const m = 3; // material_thickness
-const c = 0.3; //0.3; // curf
-const s = .5; // 0.4; // spacer margin
+const m = 3.5; // material_thickness
+const c = 0.25; //0.3; // curf
+const s = 0.5; // 0.4; // spacer margin
 
 const innerDiam = m * Math.sqrt(10);
 const outterDiam = 2 * m + innerDiam;
@@ -64,7 +64,7 @@ function drawCap(svg, tx, ty) {
 
 function drawSpacer(svg, tx, ty) {
   addCircle(svg, tx, ty, outterDiam / 2);
-  addCircle(svg, tx, ty, (innerDiam + s) / 2, 'red');
+  addCircle(svg, tx, ty, (innerDiam + s - c) / 2, 'red');
 }
 
 function drawAxel(svg, tx, ty) {

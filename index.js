@@ -420,10 +420,10 @@ const paramHandlers = {
     }
     const newValue = Number(e.target.value);
     switch (e.key) {
-      case Keys.Escape.key:
+      case KEYS.Escape.key:
         e.target.blur();
         break;
-      case Keys.Enter.key:
+      case KEYS.Enter.key:
         if (focusID.startsWith('param-len-')) {
           setLinkLength(linkage, theta, computedPoints, focusID, newValue);
         } else {
@@ -432,8 +432,8 @@ const paramHandlers = {
         updateDerivedState();
         e.target.blur();
         break;
-      case Keys.ArrowUp.key:
-      case Keys.ArrowDown.key:
+      case KEYS.ArrowUp.key:
+      case KEYS.ArrowDown.key:
         if (focusID.startsWith('param-len-')) {
           setLinkLength(linkage, theta, computedPoints, focusID, newValue);
         } else {
