@@ -22,10 +22,7 @@ import {
   drawLinkage,
   drawStaticSVG,
 } from './draw.js';
-import {
-  initSVG,
-  drawSVG,
-} from './draw_svg.js';
+import {initSVG, drawSVG} from './draw_svg.js';
 import {
   movePoint,
   getSegments,
@@ -48,6 +45,18 @@ let showHelp = true;
 const {ctx, canvas} = initCanvas();
 const svg = initSVG();
 const svgView = document.getElementById('svgView');
+
+const svgMaterialThickness = document.getElementById('materialThickness');
+svgMaterialThickness.addEventListener('input', e => {
+  drawSVG(
+    svg,
+    linkage,
+    computedPoints,
+    plateInfo,
+    Number(e.target.value),
+  );
+});
+console.log(svgMaterialThickness, materialThickness);
 
 // transform to zoom/rotate canvas
 const transform = [
@@ -466,7 +475,13 @@ function draw() {
 
   if (showSVG) {
     //drawStaticSVG(svg, linkage, computedPoints, transform, plateInfo);
-    drawSVG(svg, linkage, computedPoints, plateInfo);
+    drawSVG(
+      svg,
+      linkage,
+      computedPoints,
+      plateInfo,
+      Number(svgMaterialThickness.value),
+    );
     return;
   } else {
     ctx.resetTransform();
