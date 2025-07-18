@@ -2,12 +2,8 @@ import {distance} from './geometry.js';
 
 const svgNS = 'http://www.w3.org/2000/svg';
 
-const m = 3.5; // material_thickness
 const c = 0.25; //0.3; // curf
 const s = 0.5; // 0.4; // spacer margin
-
-const innerDiam = m * Math.sqrt(10);
-const outterDiam = 2 * m + innerDiam;
 
 const round = x => Math.round(x * 1000) / 1000;
 
@@ -39,12 +35,12 @@ const addPolygon = (
   svg.appendChild(el);
 };
 
-function drawCap(svg, tx, ty) {
+function drawCap(svg, tx, ty, {outterDiam, materialThickness}) {
   const r = outterDiam / 2;
   addCircle(svg, tx, ty, r);
 
-  const w = (m - c) / 2;
-  const h = (3 * m - c) / 2;
+  const w = (materialThickness - c) / 2;
+  const h = (3 * materialThickness - c) / 2;
   const pts = [
     [w, h],
     [w, w],
@@ -62,16 +58,16 @@ function drawCap(svg, tx, ty) {
   addPolygon(svg, tx, ty, pts, 'red');
 }
 
-function drawSpacer(svg, tx, ty) {
+function drawSpacer(svg, tx, ty, {outterDiam, innerDiam}) {
   addCircle(svg, tx, ty, outterDiam / 2);
   addCircle(svg, tx, ty, (innerDiam + s - c) / 2, 'red');
 }
 
-function drawAxel(svg, tx, ty) {
-  const w = (3 * m + c) / 2;
-  const h = (6 * m + c) / 2;
-  const wi = (m - c) / 2;
-  const hi = 3 * m;
+function drawAxel(svg, tx, ty, {materialThickness}) {
+  const w = (3 * materialThickness + c) / 2;
+  const h = (6 * materialThickness + c) / 2;
+  const wi = (materialThickness - c) / 2;
+  const hi = 3 * materialThickness;
 
   const pts = [
     [w, h],
@@ -86,7 +82,7 @@ function drawAxel(svg, tx, ty) {
   addPolygon(svg, tx, ty, pts);
 }
 
-const drawLink = (svg, tx, ty, length) => {
+const drawLink = (svg, tx, ty, length, {innerDiam, outterDiam}) => {
   const height = outterDiam;
 
   const rect = document.createElementNS(svgNS, 'rect');
@@ -114,17 +110,26 @@ export function initSVG() {
   svg.setAttribute('width', w + 'mm');
   svg.setAttribute('height', h + 'mm');
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.style.display = 'none';
   return svg;
 }
 
-export function drawSVG(svg, linkage, computedPoints, plateInfo) {
+export function drawSVG(
+  svg,
+  linkage,
+  computedPoints,
+  plateInfo,
+  materialThickness = 3.5,
+) {
+  const innerDiam = materialThickness * Math.sqrt(10);
+  const outterDiam = 2 * materialThickness + innerDiam;
+  const params = {materialThickness, innerDiam, outterDiam};
+
   svg.innerHTML = ''; // Clear previous drawings
 
   let x = 10;
   let y = 10;
 
-  const space = outterDiam+m;
+  const space = outterDiam + materialThickness;
   let numLinks = 0;
   for (const plane of plateInfo.planes) {
     for (const plate of plane) {
@@ -133,7 +138,7 @@ export function drawSVG(svg, linkage, computedPoints, plateInfo) {
           typeof p0 === 'string' ? computedPoints[p0] : p0,
           typeof p1 === 'string' ? computedPoints[p1] : p1,
         );
-        drawLink(svg, x, y, length * 40);
+        drawLink(svg, x, y, length * 40, params);
         y += space;
         numLinks += 1;
       }
@@ -141,8 +146,8 @@ export function drawSVG(svg, linkage, computedPoints, plateInfo) {
   }
 
   for (let i = 0; i < numLinks * 2; i++) {
-    drawCap(svg, i * space + x, 0 + y);
-    drawSpacer(svg, i * space + x, space + y);
-    drawAxel(svg, i * space + x, 7*m + space + y);
+    drawCap(svg, i * space + x, 0 + y, params);
+    drawSpacer(svg, i * space + x, space + y, params);
+    drawAxel(svg, i * space + x, 7 * materialThickness + space + y, params);
   }
 }

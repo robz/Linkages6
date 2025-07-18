@@ -47,6 +47,7 @@ let showSVG = false;
 let showHelp = true;
 const {ctx, canvas} = initCanvas();
 const svg = initSVG();
+const svgView = document.getElementById('svgView');
 
 // transform to zoom/rotate canvas
 const transform = [
@@ -324,10 +325,10 @@ document.addEventListener('keydown', event => {
 
         // hide the canvas
         canvas.style.display = 'none';
-        svg.style.display = 'block';
+        svgView.style.display = 'block';
       } else {
         canvas.style.display = 'block';
-        svg.style.display = 'none';
+        svgView.style.display = 'none';
         requestAnimationFrame(draw);
       }
       break;
@@ -464,7 +465,6 @@ function draw() {
   }
 
   if (showSVG) {
-    console.log('hi???');
     //drawStaticSVG(svg, linkage, computedPoints, transform, plateInfo);
     drawSVG(svg, linkage, computedPoints, plateInfo);
     return;
