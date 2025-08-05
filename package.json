@@ -1,0 +1,8 @@
+{
+  "name": "linkage6",
+  "version": "0.0.0",
+  "description": "Robby's Linkage6 Application",
+  "scripts": {
+    "start": "http-server . -p 3000"
+  }
+}
